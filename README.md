@@ -16,7 +16,17 @@ Point it at a folder of lectures, podcasts, courses or voice memos. Every audio 
 
 Built on [faster-whisper](https://github.com/SYSTRAN/faster-whisper), an efficient version of OpenAI's Whisper speech model.
 
-## Use it
+## The app
+
+```
+python3 transcribe_app.py
+```
+
+Pick the folder with your recordings and where the text should go, choose a model, and press **Start**. A progress bar and a log show where it is. **Stop** works any time, and **Start** carries on from there.
+
+If the speech model package isn't installed, the app sets it up the first time in its own folder (`~/.local/share/transcribe-folder`), so nothing on your system changes.
+
+## From the command line
 
 ```
 pip install faster-whisper            # plus ffmpeg: apt install ffmpeg / brew install ffmpeg / winget install ffmpeg
