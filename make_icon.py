@@ -1,23 +1,12 @@
-"""Draws a simple app icon: a rounded square in the app's color with a symbol. Used by the Sebayt Labs tools.
-  python3 make_icon.py OUT.png "#3b5bdb" "Lk" """
-import sys
-from PIL import Image, ImageDraw, ImageFont
+"""Renders icon.svg (the app's hand-drawn icon) to icon.png, which the window, the menu entry and the downloads use.
+  pip install cairosvg && python3 make_icon.py
+Shared by the Sebayt Labs tools: edit it in learning-kit, then run tools/sync_shared.sh there."""
+from pathlib import Path
 
+import cairosvg
 
-def icon(out, color, text, size=256):
-    img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-    d = ImageDraw.Draw(img)
-    d.rounded_rectangle([8, 8, size - 8, size - 8], radius=56, fill=color)
-    for path in ("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", "DejaVuSans-Bold.ttf", "Arial Bold.ttf"):
-        try:
-            font = ImageFont.truetype(path, int(size * 0.42))
-            break
-        except OSError:
-            font = ImageFont.load_default()
-    box = d.textbbox((0, 0), text, font=font)
-    d.text(((size - box[2] - box[0]) / 2, (size - box[3] - box[1]) / 2), text, font=font, fill="white")
-    img.save(out)
-
+HERE = Path(__file__).resolve().parent
 
 if __name__ == "__main__":
-    icon(sys.argv[1], sys.argv[2], sys.argv[3])
+    cairosvg.svg2png(url=str(HERE / "icon.svg"), write_to=str(HERE / "icon.png"), output_width=512, output_height=512)
+    print("wrote", HERE / "icon.png")

@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <title>Transcribe Folder</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#379aab"/>
+      <stop offset="1" stop-color="#096777"/>
+    </linearGradient>
+    <linearGradient id="gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="drop" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#000000" flood-opacity="0.25"/>
+    </filter>
+  </defs>
+  <rect x="24" y="24" width="464" height="464" rx="108" fill="url(#bg)"/>
+  <rect x="24" y="24" width="464" height="232" rx="108" fill="url(#gloss)"/>
+  <rect x="25.5" y="25.5" width="461" height="461" rx="106.5" fill="none" stroke="#ffffff" stroke-opacity="0.18" stroke-width="3"/>
+  <g filter="url(#drop)">
+
+    <path d="M84 156 C 84 140 96 128 112 128 L 200 128 L 232 160 L 400 160 C 416 160 428 172 428 188 L 428 196 L 84 196 Z" fill="#ffffff" fill-opacity="0.75"/>
+    <rect x="84" y="184" width="344" height="212" rx="26" fill="#ffffff"/>
+    <g stroke="#0c8599" stroke-width="14" stroke-linecap="round">
+      <path d="M128 290 L 128 290"/><path d="M152 266 L 152 314"/><path d="M176 240 L 176 340"/>
+      <path d="M200 262 L 200 318"/><path d="M224 280 L 224 300"/>
+    </g>
+    <path d="M250 270 L 266 290 L 250 310" fill="none" stroke="#ffd43b" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+    <g stroke="#54a9b7" stroke-width="12" stroke-linecap="round">
+      <path d="M296 250 L 392 250"/><path d="M296 290 L 380 290"/><path d="M296 330 L 360 330"/>
+    </g>
+
+  </g>
+</svg>

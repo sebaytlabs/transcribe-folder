@@ -1,3 +1,5 @@
+<img src="icon.svg" alt="" width="112" align="right">
+
 # Transcribe Folder
 
 **Point it at a folder of recordings. Get a text file with timestamps for every one. Offline.**
