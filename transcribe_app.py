@@ -17,7 +17,7 @@ import tkinter as tk
 from pathlib import Path
 from tkinter import messagebox, ttk
 
-from appkit import BG, DIM, FG, FONT, FROZEN, App, Page, handle_cli, open_path, script_cmd, write
+from appkit import BG, FG, FONT, FROZEN, App, Page, handle_cli, open_path, script_cmd, write
 
 ACCENT = "#0c8599"
 HERE = Path(__file__).resolve().parent
@@ -165,7 +165,6 @@ class TranscribePage(Page):
 
 def tutorial(app):
     pg = lambda: app.page("main")
-    log = lambda: pg().log.get("1.0", "end")
     return [
         {"title": "Welcome to Transcribe Folder", "target": lambda: app.tour_button,
          "text": "Hours of lectures, calls or voice memos are hard to search and slow to review. This turns every "

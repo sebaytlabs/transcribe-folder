@@ -11,6 +11,16 @@ on:
 permissions:
   contents: write  # the build jobs add their files to the release
 jobs:
+  lint:  # unused imports and variables, undefined names: the mistakes tests can miss
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install -q ruff==0.16.9
+      - run: ruff check --select F --output-format github .
+
   test:
     strategy:
       fail-fast: false
@@ -25,7 +35,7 @@ jobs:
       - run: python packaging/build.py --tests
 
   build:
-    needs: test
+    needs: [lint, test]
     if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
     strategy:
       fail-fast: false
