@@ -139,7 +139,7 @@ def linux_appimage():
     (appdir / f"{CFG['id']}.desktop").write_text(
         f"[Desktop Entry]\nType=Application\nName={NAME}\nComment={CFG.get('comment', NAME)}\n"
         f"Exec={EXE}\nIcon={CFG['id']}\nCategories={CFG.get('categories', 'Utility;')}\nTerminal=false\n"
-        f"StartupWMClass={EXE}\n", encoding="utf-8")
+        f"StartupWMClass={EXE[0] + EXE[1:].lower()}\n", encoding="utf-8")  # how Tk names the window class
     apprun = appdir / "AppRun"
     apprun.write_text(f'#!/bin/sh\nexec "$(dirname "$(readlink -f "$0")")/{EXE}/{EXE}" "$@"\n')
     apprun.chmod(0o755)
