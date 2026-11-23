@@ -5,6 +5,8 @@
 For lectures, courses, podcasts, interviews and voice memos. Every audio and video file in the folder (and its subfolders) becomes a text file:
 
 ```
+# lecture 03.mp4
+# 58 min, model base.en
 [0:00:00] Welcome back. Last week we covered the basics of compound interest.
 [0:00:04] Today we'll look at what happens when you add a little every month,
 [0:00:09] and why starting early matters more than the amount.
@@ -88,7 +90,8 @@ Pick the folder with your recordings and where the text should go, choose a mode
 
 **What you get:**
 - **True timestamps.** `[1:02:15]` means 1 hour 2 minutes 15 seconds into the whole file, not into the piece.
-- **The same layout.** The output mirrors your folders, so `course/week 3/lecture.mp4` becomes `out/week 3/lecture.txt`.
+- **The same layout.** The output mirrors your folders, so `course/week 3/lecture.mp4` becomes `out/week 3/lecture.txt`. Two recordings with the same name (`talk.mp3` and `talk.mp4`) each get their own file: `talk.txt` and `talk.mp4.txt`.
+- **Nothing done twice.** A recording whose text file is already there is skipped, so you can point it at the same folder again after adding new recordings. While it works, the pieces in progress sit in a `.work` folder inside the text folder, and it's removed when they're done. The text folder can be inside the recordings folder, or even be the same folder.
 
 Built on [faster-whisper](https://github.com/SYSTRAN/faster-whisper), an efficient version of OpenAI's Whisper speech model.
 
