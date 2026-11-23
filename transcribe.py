@@ -34,9 +34,14 @@ def stamp(s):
     return f"[{s // 3600}:{s % 3600 // 60:02d}:{s % 60:02d}]"
 
 
-def files(source, only=None):
+def files(source, only=None, skip=None):
+    """Media files in source. skip: a folder to leave out, the work folder of pieces when OUT is inside SOURCE
+    (they are .wav files, and would be transcribed again as recordings of their own)."""
     src = Path(source)
     found = [src] if src.is_file() else sorted(p for p in src.rglob("*") if p.suffix.lower() in MEDIA and p.is_file())
+    if skip:
+        skip = Path(skip).resolve()
+        found = [p for p in found if not p.resolve().is_relative_to(skip)]
     return [p for p in found if not only or only.lower() in str(p).lower()]
 
 
@@ -44,6 +49,19 @@ def out_path(f, source, out):
     src = Path(source)
     rel = f.name if src.is_file() else f.relative_to(src)
     return Path(out) / Path(rel).with_suffix(".txt")
+
+
+def targets(found, source, out):
+    """[(file, its .txt)]. Two recordings that would share a text file (talk.mp3 and talk.mp4) don't: the first
+    keeps talk.txt, so earlier runs still count, and the next gets talk.mp4.txt instead of being skipped."""
+    taken, pairs = set(), []
+    for f in found:
+        t = out_path(f, source, out)
+        if t in taken:
+            t = t.with_name(f.name + ".txt")
+        taken.add(t)
+        pairs.append((f, t))
+    return pairs
 
 
 def split(f, work):
@@ -121,8 +139,8 @@ def main(argv):
     a = ap.parse_args(argv)
     if not shutil.which("ffmpeg"):
         sys.exit("ffmpeg is needed: apt install ffmpeg / brew install ffmpeg / winget install ffmpeg")
-    todo = [(f, out_path(f, a.source, a.out)) for f in files(a.source, a.only)]
-    todo = [(f, t) for f, t in todo if not t.exists()]
+    todo = targets(files(a.source, skip=Path(a.out) / ".work"), a.source, a.out)  # before --only: names stay put
+    todo = [(f, t) for f, t in todo if not t.exists() and (not a.only or a.only.lower() in str(f).lower())]
     print(f"{len(todo)} file{'' if len(todo) == 1 else 's'} to transcribe", flush=True)
     if not todo:
         return

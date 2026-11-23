@@ -46,12 +46,21 @@ class Pieces(unittest.TestCase):
         self.assertEqual([p.name for p in t.files(d)], ["x.MP3", "y.mkv"])
         self.assertEqual([p.name for p in t.files(d, "B/")], ["y.mkv"])
 
+    def test_work_pieces_inside_source_are_not_recordings(self):
+        d = Path(tempfile.mkdtemp())
+        for n in ("talk.mp3", ".work/0123/c0000.wav"):
+            (d / n).parent.mkdir(parents=True, exist_ok=True)
+            (d / n).write_bytes(b"")
+        self.assertEqual([p.name for p in t.files(d, skip=d / ".work")], ["talk.mp3"])
+
+    def test_same_name_different_type_gets_its_own_text(self):
+        d = Path(tempfile.mkdtemp())
+        found = [d / "a" / "talk.mp3", d / "a" / "talk.mp4", d / "b" / "talk.mp3"]
+        got = [str(tx.relative_to(d / "out")) for _, tx in t.targets(found, d, d / "out")]
+        self.assertEqual(got, ["a/talk.txt", "a/talk.mp4.txt", "b/talk.txt"])
+
     def test_stamp(self):
         self.assertEqual(t.stamp(3735), "[1:02:15]")
-
-
-if __name__ == "__main__":
-    unittest.main()
 
 
 try:
@@ -73,3 +82,7 @@ class ReadWav(unittest.TestCase):
             w.setframerate(16000)
             w.writeframes(struct.pack("<3h", 0, 16384, -32768))
         self.assertEqual(t.read_wav(p).tolist(), [0.0, 0.5, -1.0])
+
+
+if __name__ == "__main__":
+    unittest.main()
