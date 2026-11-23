@@ -114,7 +114,7 @@ def main(argv):
         sys.exit("ffmpeg is needed: apt install ffmpeg / brew install ffmpeg / winget install ffmpeg")
     todo = [(f, out_path(f, a.source, a.out)) for f in files(a.source, a.only)]
     todo = [(f, t) for f, t in todo if not t.exists()]
-    print(f"{len(todo)} files to transcribe", flush=True)
+    print(f"{len(todo)} file{'' if len(todo) == 1 else 's'} to transcribe", flush=True)
     if not todo:
         return
     run_model = whisper(a.model, None if a.language == "auto" else a.language, a.threads)

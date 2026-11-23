@@ -4,6 +4,7 @@ One window per app: a colored header with the app's name, a sidebar of pages, a 
 a menu bar with Help, and pages that always open on a start screen that says what to do.
 Long jobs run in a background thread and write to a log box, so the window never freezes.
 """
+import json
 import queue
 import subprocess
 import sys
@@ -49,7 +50,12 @@ class App(tk.Tk):
         tk.Label(head, text=tagline, bg=accent, fg="white", font=(FONT, 11)).pack(side="left")
         tk.Button(head, text="?  Help", command=self.help_current, bg=accent, fg="white", relief="flat",
                   activebackground=accent, activeforeground="white", font=(FONT, 11, "bold"),
-                  cursor="hand2", bd=0).pack(side="right", padx=16)
+                  cursor="hand2", bd=0).pack(side="right", padx=(4, 16))
+        self.tour_button = tk.Button(head, text="▶  Tutorial", command=lambda: self.start_tour(), bg=accent,
+                                     fg="white", relief="flat", activebackground=accent, activeforeground="white",
+                                     font=(FONT, 11, "bold"), cursor="hand2", bd=0)
+        self.tour_button.pack(side="right", padx=4)
+        self.tour, self.tour_steps, self.tour_file, self.tour_version = None, None, None, 1
 
         body = tk.Frame(self, bg=BG)
         body.pack(fill="both", expand=True)
@@ -71,6 +77,7 @@ class App(tk.Tk):
         self.go_menu = tk.Menu(bar, tearoff=0)
         bar.add_cascade(label="Go", menu=self.go_menu)
         helpm = tk.Menu(bar, tearoff=0)
+        helpm.add_command(label="Tutorial (every part, one step at a time)", command=lambda: self.start_tour())
         helpm.add_command(label="How to use this page", command=self.help_current, accelerator="F1")
         helpm.add_command(label=f"About {name}", command=lambda: messagebox.showinfo(f"About {name}", about))
         bar.add_cascade(label="Help", menu=helpm)
@@ -120,9 +127,233 @@ class App(tk.Tk):
     def say(self, text):
         self.status.config(text=text)
 
+    # ---- the tutorial
+    def set_tutorial(self, steps, store, version=1):
+        """steps() -> list of step dicts (see Tour). store: a JSON file that remembers the tutorial was finished.
+        The first time the app opens (and after a new version of the tutorial) it runs by itself and can't be
+        skipped; from the Tutorial button it's a replay you can skip."""
+        self.tour_steps, self.tour_file, self.tour_version = steps, store, version
+
+    def tutorial_seen(self):
+        try:
+            return json.loads(open(self.tour_file, encoding="utf-8").read()).get("tutorial") == self.tour_version
+        except (OSError, ValueError, TypeError):
+            return False
+
+    def start_tour(self, required=False):
+        if self.tour or not self.tour_steps:
+            return
+        self.tour = Tour(self, self.tour_steps(), required)
+
+    def tour_finished(self):
+        self.tour = None
+        if self.tour_file:
+            import os
+            os.makedirs(os.path.dirname(str(self.tour_file)), exist_ok=True)
+            try:
+                data = json.loads(open(self.tour_file, encoding="utf-8").read())
+            except (OSError, ValueError):
+                data = {}
+            data["tutorial"] = self.tour_version
+            with open(self.tour_file, "w", encoding="utf-8") as f:
+                json.dump(data, f)
+
     def run(self, first):
         self.show(first)
+        if self.tour_steps and not self.tutorial_seen():
+            self.after(500, lambda: self.start_tour(required=True))
         self.mainloop()
+
+
+class Tour:
+    """The tutorial: rings one part of the window at a time, says what it is for and has you do one real thing.
+
+    Each step is a dict:
+      title, text   what this part is and why it's there
+      do            the one thing to do now ("Your turn: ...")
+      page          the page to show first (optional)
+      target        fn() -> the widget to ring (optional; none = the card sits in the middle)
+      start         fn() -> a value remembered when the step opens (optional)
+      check         fn(start_value) -> True once the thing is done; Next waits for it in the first-run tutorial
+    `required` (first run): no Skip, Next waits for each check. From the Tutorial button: Skip, Esc and Next work.
+    """
+    RING = "#f59f00"
+
+    def __init__(self, app, steps, required=False):
+        self.app, self.steps, self.required, self.i = app, steps, required, 0
+        self.passed, self.base, self.poll_job = set(), None, None
+        self.ring = [tk.Frame(app, bg=self.RING) for _ in range(4)]
+        # The card is a small window of its own beside the app, so it never covers the part you're working in.
+        self.win = tk.Toplevel(app, bg="#fffdf5")
+        self.win.title(f"{app.name}: tutorial")
+        self.win.transient(app)
+        self.win.resizable(False, False)
+        self.win.protocol("WM_DELETE_WINDOW", (lambda: None) if required else self.finish)
+        self.where = None
+        self.card = tk.Frame(self.win, bg="#fffdf5", highlightthickness=2, highlightbackground=self.RING)
+        self.card.pack(fill="both", expand=True)
+        self.title = tk.Label(self.card, bg="#fffdf5", fg=FG, font=(FONT, 14, "bold"), anchor="w", justify="left",
+                              wraplength=380)
+        self.title.pack(fill="x", padx=14, pady=(12, 4))
+        self.body = tk.Label(self.card, bg="#fffdf5", fg=FG, font=(FONT, 11), anchor="w", justify="left",
+                             wraplength=380)
+        self.body.pack(fill="x", padx=14)
+        self.todo = tk.Label(self.card, bg="#fffdf5", fg="#a35c00", font=(FONT, 11, "bold"), anchor="w",
+                             justify="left", wraplength=380)
+        self.todo.pack(fill="x", padx=14, pady=(8, 0))
+        bar = tk.Frame(self.card, bg="#fffdf5")
+        bar.pack(fill="x", padx=14, pady=12)
+        self.count = tk.Label(bar, bg="#fffdf5", fg=DIM, font=(FONT, 10))
+        self.count.pack(side="left")
+        mk = lambda t, c: tk.Button(bar, text=t, command=c, relief="flat", bd=0, padx=12, pady=5, cursor="hand2",
+                                    font=(FONT, 10, "bold"), bg="#e4e7ec", fg=FG, activebackground=LINE)
+        self.next_b = mk("Next", self.next)
+        self.next_b.config(bg=app.accent, fg="white", activebackground=app.accent, activeforeground="white")
+        self.next_b.pack(side="right")
+        self.back_b = mk("Back", self.back)
+        self.back_b.pack(side="right", padx=6)
+        self.skip_b = mk("Skip", self.finish)
+        if not required:
+            self.skip_b.pack(side="right")
+            self.win.bind("<Escape>", lambda e: self.finish())
+        self.show_step()
+
+    def step(self):
+        return self.steps[self.i]
+
+    def waiting(self):
+        return "check" in self.step() and self.i not in self.passed
+
+    def show_step(self):
+        st = self.step()
+        if st.get("page"):
+            self.app.show(st["page"])
+        self.app.update_idletasks()
+        if "start" in st and self.i not in self.passed:
+            self.base = st["start"]()
+        self.title.config(text=st["title"])
+        self.body.config(text=st["text"])
+        self.count.config(text=f"{self.i + 1} of {len(self.steps)}")
+        self.back_b.config(state="normal" if self.i else "disabled")
+        self.next_b.config(text="Done" if self.i == len(self.steps) - 1 else "Next")
+        self.refresh()
+        self.place()
+        self.app.after(150, self.focus_target)
+        if self.poll_job:
+            self.app.after_cancel(self.poll_job)
+        self.poll_job = self.app.after(300, self.poll)
+
+    def refresh(self):
+        st = self.step()
+        do = st.get("do", "")
+        if self.waiting():
+            self.todo.config(text="Your turn: " + do + ("\nNext opens when you've done it." if self.required else ""),
+                             fg="#a35c00")
+        elif "check" in st:
+            self.todo.config(text="✓ Done. Click Next.", fg="#2b8a3e")
+        else:
+            self.todo.config(text=("Try it: " + do) if do else "", fg="#a35c00")
+        self.next_b.config(state="disabled" if self.required and self.waiting() else "normal")
+
+    def target(self):
+        t = self.step().get("target")
+        try:
+            w = t() if t else None
+            return w if w is not None and w.winfo_ismapped() else None
+        except (tk.TclError, AttributeError):
+            return None
+
+    def focus_target(self):
+        """Keys go to the app (the ringed box if you type into it), not to the card."""
+        w = self.target()
+        try:
+            (w if isinstance(w, (tk.Entry, tk.Text)) else self.app).focus_force()
+        except tk.TclError:
+            pass
+
+    def place(self):
+        app, w = self.app, self.target()
+        app.update_idletasks()
+        W, H = app.winfo_width(), app.winfo_height()
+        cw, ch = self.card.winfo_reqwidth(), self.card.winfo_reqheight()
+        ax, ay, sw = app.winfo_rootx(), app.winfo_rooty(), app.winfo_screenwidth()
+        if w is None:
+            for r in self.ring:
+                r.place_forget()
+            x, y = (W - cw) // 2, (H - ch) // 2
+            if ax + W + 16 + cw <= sw:          # nothing ringed: still beside the app when there's room
+                x, y = W + 16, 70
+            elif ax - 16 - cw >= 0:
+                x, y = -16 - cw, 70
+        else:
+            x0, y0 = w.winfo_rootx() - app.winfo_rootx() - 5, w.winfo_rooty() - app.winfo_rooty() - 5
+            x1, y1 = x0 + w.winfo_width() + 10, y0 + w.winfo_height() + 10
+            x0, y0, x1, y1 = max(x0, 0), max(y0, 0), min(x1, W), min(y1, H)
+            t = 4
+            for r, geo in zip(self.ring, ((x0, y0, x1 - x0, t), (x0, y1 - t, x1 - x0, t),
+                                          (x0, y0, t, y1 - y0), (x1 - t, y0, t, y1 - y0))):
+                r.place(x=geo[0], y=geo[1], width=geo[2], height=geo[3])
+                r.lift()
+            # the card goes beside the ringed part: right, left, below or above, wherever it fits
+            if x1 + 12 + cw <= W:
+                x, y = x1 + 12, y0
+            elif x0 - 12 - cw >= 0:
+                x, y = x0 - 12 - cw, y0
+            elif y1 + 12 + ch <= H:
+                x, y = x0, y1 + 12
+            elif y0 - 12 - ch >= 0:
+                x, y = x0, y0 - 12 - ch
+            else:
+                x, y = W - cw - 16, H - ch - 40
+            x, y = min(max(x, 8), W - cw - 8), min(max(y, 70), H - ch - 30)
+            ty = y0
+            if ax + W + 16 + cw <= sw:          # room on the right of the app: dock the card there
+                x, y = W + 16, min(max(ty, 0), H - ch - 48)
+            elif ax - 16 - cw >= 0:             # or on the left
+                x, y = -16 - cw, min(max(ty, 0), H - ch - 48)
+        where = f"+{ax + x}+{ay + y}"
+        if where != self.where:
+            self.where = where
+            self.win.geometry(where)
+        self.win.lift()
+
+    def poll(self):
+        self.poll_job = None
+        if self.app.tour is not self:
+            return
+        st = self.step()
+        if self.waiting():
+            try:
+                ok = bool(st["check"](self.base))
+            except Exception:  # a half-done step is not done yet, never a crash
+                ok = False
+            if ok:
+                self.passed.add(self.i)
+                self.refresh()
+        self.place()   # follow the part if the page changed under it
+        self.poll_job = self.app.after(300, self.poll)
+
+    def next(self):
+        if self.required and self.waiting():
+            return
+        if self.i == len(self.steps) - 1:
+            self.finish()
+        else:
+            self.i += 1
+            self.show_step()
+
+    def back(self):
+        if self.i:
+            self.i -= 1
+            self.show_step()
+
+    def finish(self):
+        if self.poll_job:
+            self.app.after_cancel(self.poll_job)
+        for w in self.ring:
+            w.destroy()
+        self.win.destroy()
+        self.app.tour_finished()
 
 
 # ---- building blocks for pages

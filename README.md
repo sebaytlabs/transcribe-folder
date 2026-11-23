@@ -1,6 +1,8 @@
 # Transcribe Folder
 
-Point it at a folder of lectures, podcasts, courses or voice memos. Every audio and video file in it becomes a text file with timestamps:
+**Point it at a folder of recordings. Get a text file with timestamps for every one. Offline.**
+
+For lectures, courses, podcasts, interviews and voice memos. Every audio and video file in the folder (and its subfolders) becomes a text file:
 
 ```
 [0:00:00] Welcome back. Last week we covered the basics of compound interest.
@@ -8,23 +10,72 @@ Point it at a folder of lectures, podcasts, courses or voice memos. Every audio 
 [0:00:09] and why starting early matters more than the amount.
 ```
 
-- **Private.** It runs offline on your own computer. Nothing is uploaded, and there's no account.
-- **Fine on a small laptop.** Each file is cut into 20-minute pieces, so even a 3-hour video never has to fit in memory. It uses 2 CPU threads by default, so the computer stays usable.
-- **Resumable.** Each piece is saved as it finishes. Stop it with Ctrl-C, a reboot or a flat battery, and the next run carries on from that piece. Finished files are skipped.
-- **True timestamps.** `[1:02:15]` means 1 hour 2 minutes 15 seconds into the whole file, not into the piece.
-- **Same layout.** The output mirrors your folders, so `course/week 3/lecture.mp4` becomes `out/week 3/lecture.txt`.
+Free, no account. Nothing leaves your computer. Windows, Mac and Linux.
 
-Built on [faster-whisper](https://github.com/SYSTRAN/faster-whisper), an efficient version of OpenAI's Whisper speech model.
+![Transcribe Folder: the tutorial ringing the folder fields](docs/tutorial.gif)
 
-## The app
+*The first time you open it, a two-minute tutorial walks you through picking a folder, choosing a model and starting. ([Full video](docs/tutorial.mp4))*
+
+---
+
+## Why this exists
+
+We had a course: about 140 recordings, many over an hour long, some over three. Hours of good material that we couldn't search, skim or quote, and listening again to find one sentence takes as long as the first time.
+
+Speech-to-text models are now good enough to run on an ordinary laptop. But the first attempt with the usual tools went wrong in three ways:
+- **It ran out of memory.** A three-hour video was loaded whole, and the laptop killed the job a hundred files in.
+- **Every crash started from scratch.** Hours of finished work were lost.
+- **It took over the computer.** Nothing else could run while it worked.
+
+So we rebuilt it around the laptop instead of around the model:
+- **Small pieces.** Each recording is cut into 20-minute pieces, so even a 3-hour video never has to fit in memory.
+- **Save as you go.** Each piece's text is saved as soon as it's done. A crash, a reboot or a flat battery costs at most one piece, and the next run carries on.
+- **Leave room for you.** It uses 2 CPU threads by default, and an optional guard pauses it when other programs need the memory.
+
+Over 130 recordings finished that way on a two-core laptop, in the background, while the laptop was in use.
+
+## What it can replace
+
+Transcribe Folder is built to be a free, private alternative to these.
+
+| If you use… | It's good at… | What Transcribe Folder does instead |
+|---|---|---|
+| **Otter.ai** | Live meeting notes, speaker names | Your audio goes to their servers, and the free plan caps minutes. Here it's offline and unlimited. |
+| **Rev, TranscribeMe** | Human-checked accuracy | They charge by the minute, and a whole course costs real money. Here it's free. Pay a human only for the one recording that must be perfect. |
+| **Descript** | Editing audio by editing text | Built for one recording at a time, with a subscription. Here you give it a whole folder and walk away. |
+| **MacWhisper** and similar apps | A nice Whisper app | Mac only, and often one file at a time. Here it works on every system, does whole folders, and resumes after a crash. |
+| **YouTube's automatic captions** | Free captions | Only for videos you upload, and only on YouTube. Here it works for any file on your computer, without uploading anything. |
+
+## How to use what you get
+
+- **Search.** Every course, talk and memo becomes searchable with your normal file search or `grep`. Find the moment someone said "compound interest", then jump to `[0:00:04]` in the video.
+- **Study.** Pull your questions and flashcards from the text. [Learning Kit](https://github.com/sebaytlabs/learning-kit) takes cards as plain `question :: answer` lines.
+- **Write.** Quote a talk accurately, write show notes for a video, or turn a voice memo into a draft.
+
+## Start
+
+You need Python 3.9 or newer and ffmpeg (`apt install ffmpeg` / `brew install ffmpeg` / `winget install ffmpeg`).
 
 ```
+git clone https://github.com/sebaytlabs/transcribe-folder
+cd transcribe-folder
 python3 transcribe_app.py
 ```
 
-Pick the folder with your recordings and where the text should go, choose a model, and press **Start**. A progress bar and a log show where it is. **Stop** works any time, and **Start** carries on from there.
+The first time, a **tutorial** shows you each part:
+1. Pick a folder of recordings.
+2. Choose a model.
+3. Press Start.
 
-If the speech model package isn't installed, the app sets it up the first time in its own folder (`~/.local/share/transcribe-folder`), so nothing on your system changes.
+The **▶ Tutorial** button runs it again, and **F1** shows help.
+
+Pick the folder with your recordings and where the text should go, choose a model, and press **Start**. A progress bar and a log show where it is. **Stop** works any time, and **Start** carries on from there. If the speech model package isn't installed, the app sets it up the first time in its own folder (`~/.local/share/transcribe-folder`), so nothing on your system changes.
+
+**What you get:**
+- **True timestamps.** `[1:02:15]` means 1 hour 2 minutes 15 seconds into the whole file, not into the piece.
+- **The same layout.** The output mirrors your folders, so `course/week 3/lecture.mp4` becomes `out/week 3/lecture.txt`.
+
+Built on [faster-whisper](https://github.com/SYSTRAN/faster-whisper), an efficient version of OpenAI's Whisper speech model.
 
 ## From the command line
 
@@ -42,7 +93,7 @@ python3 transcribe.py talk.mp4 ~/Transcripts --language auto --model large-v3
 | `--threads` | `2` | more threads run faster but leave less for everything else |
 | `--only TEXT` | | only the files whose path contains TEXT |
 
-On a two-core laptop, `base.en` runs several times faster than real time. The model downloads once on first use.
+Measured on a two-core laptop: `base.en` turned 3 minutes of lecture audio into text in 9 seconds, using about 450 MB of memory at its peak (`tiny.en`: 5 seconds). Bigger models are much slower. The model downloads once, on first use.
 
 ## Big jobs: pause when memory runs low (Linux)
 
@@ -62,6 +113,28 @@ The job pauses if free memory stays under 300 MB for a minute, and resumes once 
 python3 -m unittest discover tests     # needs ffmpeg; uses a stand-in for the model
 ```
 
+## Screenshots
+
+![Pick a folder of recordings and where the text goes.](docs/folders.png)
+*Pick a folder of recordings and where the text goes.*
+
+![Start, watch the progress, stop any time.](docs/done.png)
+*Start, watch the progress, stop any time.*
+
+## Related tools
+
+- **[Learning Kit](https://github.com/sebaytlabs/learning-kit).** Turn what you transcribed into questions, flashcards and quizzes.
+- **[SimpleBrain](https://github.com/sebaytlabs/simplebrain).** Keep transcripts beside your notes, and link and search them with everything else.
+- **[Clip Pipeline](https://github.com/sebaytlabs/clip-pipeline).** Transcribe your own videos for show notes and captions.
+
+## Limits, plainly
+
+- **Whisper sometimes invents text,** especially over long silences, music or noise, and it does so confidently (a documented weakness of the model). Before you quote a line, jump to its timestamp and listen.
+- **No speaker names.** You get what was said, not who said it.
+- **Accuracy drops** with heavy accents, crosstalk, poor microphones and technical words. A bigger model helps, at the cost of speed.
+- **The `.en` models are English only.** Use `large-v3` (slow) for other languages.
+- **Only transcribe what you're allowed to.** A transcript of a paid course is for your own study, not for sharing.
+
 ## License
 
-MIT. Made by [Sebayt Labs](https://sebaytlabs.com).
+MIT. Made by [Sebayt Labs](https://sebaytlabs.com). We build free tools when the usual ones are too expensive, too complicated, or don't do the job.

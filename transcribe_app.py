@@ -66,14 +66,16 @@ class TranscribePage(Page):
                     "Press Start. Stop any time; Start again carries on where it stopped."])
         self.src = tk.StringVar()
         self.out = tk.StringVar(value=str(Path.home() / "Transcripts"))
-        self.path_field("Recordings folder", self.src)
-        self.path_field("Save text to", self.out)
-        r = self.row()
+        self.fields = tk.Frame(self.body, bg=BG)
+        self.fields.pack(fill="x")
+        self.path_field("Recordings folder", self.src, parent=self.fields)
+        self.path_field("Save text to", self.out, parent=self.fields)
+        r = self.model_row = self.row()
         tk.Label(r, text="Model", bg=BG, fg=FG, font=(FONT, 11), width=16, anchor="w").pack(side="left")
         self.model = ttk.Combobox(r, values=[d for _, d in MODELS], state="readonly", width=48)
         self.model.current(0)
         self.model.pack(side="left")
-        r = self.row(pady=10)
+        r = self.buttons = self.row(pady=10)
         self.go = self.button(r, "Start", self.start)
         self.go.pack(side="left")
         self.stop_btn = self.button(r, "Stop", self.stop, primary=False, state="disabled")
@@ -134,7 +136,7 @@ class TranscribePage(Page):
             line = line.rstrip()
             if "HF_TOKEN" in line or not line:
                 continue
-            m = re.match(r"(\d+) files to transcribe", line)
+            m = re.match(r"(\d+) files? to transcribe", line)
             if m:
                 total = int(m.group(1))
                 self.after(0, lambda t=total: self.bar.config(maximum=max(t, 1), value=0))
@@ -158,12 +160,45 @@ class TranscribePage(Page):
         self.stop_btn.config(state="disabled")
 
 
+def tutorial(app):
+    pg = lambda: app.page("main")
+    log = lambda: pg().log.get("1.0", "end")
+    return [
+        {"title": "Welcome to Transcribe Folder", "target": lambda: app.tour_button,
+         "text": "Hours of lectures, calls or voice memos are hard to search and slow to review. This turns every "
+                 "recording in a folder into a text file with a timestamp on each line. You can search it, skim it "
+                 "and quote it. It runs on your own computer, offline. Nothing is uploaded.\n\nAbout two minutes.",
+         "do": "click Next."},
+        {"title": "Pick the folders", "target": lambda: pg().fields,
+         "text": "Recordings folder: audio or video of any kind, subfolders included. Save text to: the text files "
+                 "go here, in the same subfolders.",
+         "do": "press Browse and pick a folder with a recording or two in it.",
+         "check": lambda _: Path(pg().src.get()).is_dir()},
+        {"title": "Pick a model", "target": lambda: pg().model_row,
+         "text": "A bigger model is more accurate and slower. base.en suits clear English. large-v3 handles any "
+                 "language. The model is downloaded once, the first time.",
+         "do": "leave base.en unless you need another language. Click Next."},
+        {"title": "Start, and stop any time", "target": lambda: pg().buttons,
+         "text": "Long recordings are done in 20-minute pieces, and each piece is saved as it finishes. A laptop "
+                 "with little memory doesn't run out, and if you stop (or the power goes), Start picks up where it "
+                 "left off. Files already done are skipped.",
+         "do": "click Start. The first time, it sets up the speech model before it begins.",
+         "check": lambda _: str(pg().go.cget("state")) == "disabled" or pg().proc is not None},
+        {"title": "You're ready", "target": lambda: pg().buttons,
+         "text": "Leave it running. The bar shows how many files are done. 'Open the text folder' shows the results. "
+                 "Each line starts with its time in the recording, so you can jump straight to that spot.\n\n"
+                 "Press F1 for help.",
+         "do": "click Done."},
+    ]
+
+
 def main():
     app = App("Transcribe Folder", "Recordings in, text out. Offline.", ACCENT, ABOUT, size="1000x700",
               class_name="TranscribeFolder")
     app.add_page("main", "Transcribe", TranscribePage)
     if (HERE / "icon.png").exists():
         app.iconphoto(True, tk.PhotoImage(file=str(HERE / "icon.png")))
+    app.set_tutorial(lambda: tutorial(app), VENV.parent / "settings.json")
     app.run("main")
 
 
