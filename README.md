@@ -52,9 +52,24 @@ Transcribe Folder is built to be a free, private alternative to these.
 - **Study.** Pull your questions and flashcards from the text. [Learning Kit](https://github.com/sebaytlabs/learning-kit) takes cards as plain `question :: answer` lines.
 - **Write.** Quote a talk accurately, write show notes for a video, or turn a voice memo into a draft.
 
+## Download
+
+Free, no account. Get the file for your computer from the [latest release](https://github.com/sebaytlabs/transcribe-folder/releases/latest):
+
+| Your computer | File | Then |
+|---|---|---|
+| Windows 10 or 11 | `TranscribeFolder-<version>-windows-setup.exe` | Run it. If Windows says *Windows protected your PC*, click **More info → Run anyway** (once). |
+| Mac with Apple chip (M1 and later) | `TranscribeFolder-<version>-mac-ARM64.dmg` | Open it and drag Transcribe Folder to Applications. The first time, macOS says it can't check the app: open **System Settings → Privacy & Security**, scroll down and click **Open Anyway** (once). |
+| Mac with Intel chip | `TranscribeFolder-<version>-mac-X64.dmg` | Same as above. |
+| Linux | `TranscribeFolder-<version>-x86_64.AppImage` | Make it runnable (right-click → Properties → *Allow executing*, or `chmod +x` it), then double-click it. |
+
+The download includes the speech engine. It still needs **ffmpeg** to read your recordings: `winget install ffmpeg` (Windows), `brew install ffmpeg` (Mac), `sudo apt install ffmpeg` (Linux). The first run of each model downloads it once (about 150 MB for base.en).
+
+The apps aren't signed with a paid developer certificate yet, which is why Windows and macOS ask once.
+
 ## Start
 
-You need Python 3.9 or newer and ffmpeg (`apt install ffmpeg` / `brew install ffmpeg` / `winget install ffmpeg`).
+To run it from source instead, you need Python 3.9 or newer and ffmpeg (`apt install ffmpeg` / `brew install ffmpeg` / `winget install ffmpeg`).
 
 ```
 git clone https://github.com/sebaytlabs/transcribe-folder

@@ -1,0 +1,58 @@
+# Tests on Windows, Mac and Linux for every change. A tag like v1.0.0 also builds the downloads on each system
+# and puts them on that release. Settings live in packaging/app.json.
+# Shared by the Sebayt Labs tools: edit it in learning-kit, then run tools/sync_shared.sh there.
+name: ci
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: write  # the build jobs add their files to the release
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, windows-latest, macos-15]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python packaging/build.py --tests
+
+  build:
+    needs: test
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, windows-latest, macos-15, macos-15-intel]  # macos-15-intel: Intel Macs too
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python packaging/build.py --deps
+      - run: python packaging/build.py
+        env:
+          APP_VERSION: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || 'dev' }}
+      - name: Add the download to the release
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          shopt -s nullglob
+          files=(dist/*.exe dist/*.dmg dist/*.AppImage)
+          [ ${#files[@]} -gt 0 ] || { echo "no download for this system"; exit 0; }
+          gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 ||
+            gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --verify-tag \
+              --title "${GITHUB_REPOSITORY#*/} ${GITHUB_REF_NAME#v}" \
+              --notes "Pick the file for your computer below. The README's Download section says which one, and what to click the first time it opens." ||
+            true  # another system may have made it a moment ago
+          gh release upload "$GITHUB_REF_NAME" "${files[@]}" --repo "$GITHUB_REPOSITORY" --clobber

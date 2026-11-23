@@ -91,12 +91,21 @@ def one(f, target, work, run_model, label):
     return duration
 
 
+def read_wav(wav):
+    """The 16 kHz mono piece as the float samples the model takes. Read here, not by faster-whisper's own loader:
+    that goes through PyAV, and a new PyAV release (19) broke it, which stopped every transcription."""
+    import wave
+    import numpy as np
+    with wave.open(str(wav), "rb") as w:
+        return np.frombuffer(w.readframes(w.getnframes()), np.int16).astype(np.float32) / 32768.0
+
+
 def whisper(model_name, language, threads):
     from faster_whisper import WhisperModel
     model = WhisperModel(model_name, device="cpu", compute_type="int8", cpu_threads=threads)
 
     def run_model(wav):
-        segs, info = model.transcribe(str(wav), language=language, vad_filter=True, beam_size=1)
+        segs, info = model.transcribe(read_wav(wav), language=language, vad_filter=True, beam_size=1)
         return info.duration, [(s.start, s.text.strip()) for s in segs]
     return run_model
 

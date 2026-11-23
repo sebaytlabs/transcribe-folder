@@ -1,0 +1,14 @@
+{
+  "name": "Transcribe Folder",
+  "id": "transcribe-folder",
+  "entry": "transcribe_app.py",
+  "comment": "A folder of recordings in, timestamped text out. Offline.",
+  "categories": "AudioVideo;Utility;",
+  "data": ["transcribe.py", "memguard.sh"],
+  "hidden": ["transcribe"],
+  "pip": ["faster-whisper"],
+  "collect": ["faster_whisper", "ctranslate2"],
+  "check": ["transcribe", "faster_whisper", "ctranslate2", "av", "onnxruntime", "tokenizers"],
+  "tests": ["{python} -m unittest discover tests"],
+  "downloads": ["windows", "mac", "linux"]
+}

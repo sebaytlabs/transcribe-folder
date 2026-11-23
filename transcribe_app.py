@@ -17,7 +17,7 @@ import tkinter as tk
 from pathlib import Path
 from tkinter import messagebox, ttk
 
-from appkit import BG, DIM, FG, FONT, App, Page, open_path, write
+from appkit import BG, DIM, FG, FONT, FROZEN, App, Page, handle_cli, open_path, script_cmd, write
 
 ACCENT = "#0c8599"
 HERE = Path(__file__).resolve().parent
@@ -41,6 +41,8 @@ def has_whisper(py):
 
 
 def engine_python():
+    if FROZEN:  # the download carries faster-whisper and runs transcribe.py itself
+        return sys.executable
     if has_whisper(sys.executable):
         return sys.executable
     if VPY.exists() and has_whisper(VPY):
@@ -128,8 +130,9 @@ class TranscribePage(Page):
                 return
             self.engine = str(VPY)
             self.say("Set up. Starting.")
-        cmd = [self.engine, "-u", str(HERE / "transcribe.py"), src, out, "--model", model,
-               "--language", "auto" if model == "large-v3" else "en"]
+        args = [src, out, "--model", model, "--language", "auto" if model == "large-v3" else "en"]
+        script = HERE / "transcribe.py"
+        cmd = script_cmd(script, *args) if FROZEN else [self.engine, "-u", str(script), *args]
         self.proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
         total = None
         for line in self.proc.stdout:
@@ -203,4 +206,5 @@ def main():
 
 
 if __name__ == "__main__":
+    handle_cli()
     main()

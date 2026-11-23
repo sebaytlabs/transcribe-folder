@@ -52,3 +52,24 @@ class Pieces(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+try:
+    import numpy  # noqa: F401  (comes with faster-whisper)
+    HAVE_NUMPY = True
+except ImportError:
+    HAVE_NUMPY = False
+
+
+@unittest.skipUnless(HAVE_NUMPY, "needs numpy")
+class ReadWav(unittest.TestCase):
+    def test_pieces_are_read_as_float_samples_without_pyav(self):
+        import struct
+        import wave
+        p = Path(tempfile.mkdtemp()) / "c0000.wav"
+        with wave.open(str(p), "wb") as w:
+            w.setnchannels(1)
+            w.setsampwidth(2)
+            w.setframerate(16000)
+            w.writeframes(struct.pack("<3h", 0, 16384, -32768))
+        self.assertEqual(t.read_wav(p).tolist(), [0.0, 0.5, -1.0])

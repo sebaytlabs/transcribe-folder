@@ -3,8 +3,11 @@
 One window per app: a colored header with the app's name, a sidebar of pages, a status line at the bottom,
 a menu bar with Help, and pages that always open on a start screen that says what to do.
 Long jobs run in a background thread and write to a log box, so the window never freezes.
+
+Shared by the Sebayt Labs tools: edit it in learning-kit, then run tools/sync_shared.sh there.
 """
 import json
+import os
 import queue
 import subprocess
 import sys
@@ -14,12 +17,52 @@ from tkinter import filedialog, messagebox, ttk
 
 BG, PANEL, LINE, FG, DIM = "#f6f7f9", "#ffffff", "#dde1e7", "#1d2330", "#5d6675"
 FONT = "Sans"
+FROZEN = getattr(sys, "frozen", False)  # True in a download build (PyInstaller), False when run from a checkout
+
+
+def script_cmd(path, *args):
+    """The command that runs one of the app's own helper scripts: `python file.py ...` from a checkout, or
+    `<the app> --run file.py ...` in a download build, which has no Python of its own to call."""
+    if FROZEN:
+        return [sys.executable, "--run", str(path), *map(str, args)]
+    return [sys.executable, "-u", str(path), *map(str, args)]
+
+
+def handle_cli():
+    """Call first, before the window is made. Download builds use it for two things:
+    `--run file.py args` runs that helper script and exits, and `--check module ...` imports the given modules,
+    prints ok and exits (the build's smoke test)."""
+    if len(sys.argv) < 2 or sys.argv[1] not in ("--run", "--check"):
+        return
+    for name, fd in (("stdout", 1), ("stderr", 2)):  # a windowed build starts without them, even when piped
+        if getattr(sys, name) is None:
+            try:
+                setattr(sys, name, open(fd, "w", buffering=1, encoding="utf-8", closefd=False))
+            except OSError:
+                setattr(sys, name, open(os.devnull, "w"))
+        else:
+            try:
+                getattr(sys, name).reconfigure(line_buffering=True)
+            except (AttributeError, ValueError):
+                pass
+    if sys.argv[1] == "--check":
+        import importlib
+        for module in sys.argv[2:]:
+            importlib.import_module(module)
+        print("ok")
+        sys.exit(0)
+    if len(sys.argv) > 2:
+        import runpy
+        path = sys.argv[2]
+        sys.argv = sys.argv[2:]
+        sys.path.insert(0, os.path.dirname(os.path.abspath(path)))
+        runpy.run_path(path, run_name="__main__")
+        sys.exit(0)
 
 
 def open_path(path):
     """Open a file or folder in the system's own app."""
     if sys.platform.startswith("win"):
-        import os
         os.startfile(path)  # noqa: S606
     else:
         subprocess.Popen(["open" if sys.platform == "darwin" else "xdg-open", str(path)],
@@ -148,7 +191,6 @@ class App(tk.Tk):
     def tour_finished(self):
         self.tour = None
         if self.tour_file:
-            import os
             os.makedirs(os.path.dirname(str(self.tour_file)), exist_ok=True)
             try:
                 data = json.loads(open(self.tour_file, encoding="utf-8").read())
